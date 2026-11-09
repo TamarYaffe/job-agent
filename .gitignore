@@ -1,0 +1,10 @@
+# Secrets - never upload to GitHub
+credentials.json
+.env
+
+# Generated files
+jobs.csv
+__pycache__/
+
+profile.txt
+.DS_Store
