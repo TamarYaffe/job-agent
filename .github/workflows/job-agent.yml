@@ -1,0 +1,52 @@
+name: Job Agent
+
+on:
+  schedule:
+    # GitHub uses UTC. Israel is UTC+2 in winter and UTC+3 in summer,
+    # so we schedule both options and the time check keeps only the right one.
+    - cron: "7 6,7,10,11,14,15 * * *"
+  workflow_dispatch:   # adds a "Run workflow" button for manual runs
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Time check (9:00 / 13:00 / 17:00 Israel time)
+        id: time
+        run: |
+          HOUR=$(TZ=Asia/Jerusalem date +%H)
+          echo "Israel hour: $HOUR"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "$HOUR" =~ ^(09|13|17)$ ]]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.time.outputs.go == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.time.outputs.go == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        if: steps.time.outputs.go == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Create secret files
+        if: steps.time.outputs.go == 'true'
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          PROFILE: ${{ secrets.PROFILE }}
+        run: |
+          printf '%s' "$GOOGLE_CREDENTIALS" > credentials.json
+          printf '%s' "$PROFILE" > profile.txt
+
+      - name: Run the agent
+        if: steps.time.outputs.go == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+        run: python fetch_jobs.py
