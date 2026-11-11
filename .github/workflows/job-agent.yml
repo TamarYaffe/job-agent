@@ -2,25 +2,27 @@ name: Job Agent
 
 on:
   schedule:
-    # GitHub uses UTC. Israel is UTC+2 in winter and UTC+3 in summer,
-    # so we schedule both options and the time check keeps only the right one.
-    - cron: "7 6,7,10,11,14,15 * * *"
-  workflow_dispatch:   # adds a "Run workflow" button for manual runs
+    # GitHub cron uses UTC. Target: 09:23, 13:23, 17:23 Israel time.
+    - cron: "23 7,11,15 * * *"   # winter (Israel = UTC+2)
+    - cron: "23 6,10,14 * * *"   # summer (Israel = UTC+3)
+  workflow_dispatch:   # "Run workflow" button for manual runs
 
 jobs:
   run-agent:
     runs-on: ubuntu-latest
     steps:
-      - name: Time check (9:00 / 13:00 / 17:00 Israel time)
+      - name: Season check (works even if GitHub starts late)
         id: time
         run: |
-          HOUR=$(TZ=Asia/Jerusalem date +%H)
-          echo "Israel hour: $HOUR"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "$HOUR" =~ ^(09|13|17)$ ]]; then
-            echo "go=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "go=false" >> "$GITHUB_OUTPUT"
-          fi
+          OFFSET=$(TZ=Asia/Jerusalem date +%z)
+          echo "Israel time now: $(TZ=Asia/Jerusalem date '+%H:%M') (UTC$OFFSET)"
+          echo "Triggered by: ${{ github.event.schedule }}"
+          GO=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then GO=true; fi
+          if [ "${{ github.event.schedule }}" = "23 7,11,15 * * *" ] && [ "$OFFSET" = "+0200" ]; then GO=true; fi
+          if [ "${{ github.event.schedule }}" = "23 6,10,14 * * *" ] && [ "$OFFSET" = "+0300" ]; then GO=true; fi
+          echo "go=$GO"
+          echo "go=$GO" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         if: steps.time.outputs.go == 'true'
