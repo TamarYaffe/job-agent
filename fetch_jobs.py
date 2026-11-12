@@ -15,14 +15,38 @@ import requests
 GREENHOUSE_BOARDS = ["riskified", "tripactions", "appsflyer", "taboola", "wizinc",
                      "axonius", "yotpo", "similarweb", "transmitsecurity",
                      "catonetworks", "payoneer", "jfrog", "forter", "bigid",
-                     "island", "nice"]
+                     "island", "nice", "gongio", "orcasecurity", "via", "apiiro",
+                     "duda", "torq", "nanit", "obligo", "alta"]
 LEVER_COMPANIES = ["walkme", "cloudinary"]
+ASHBY_BOARDS = ["honeybook", "moonactive", "unit", "melio-payments"]
+SMARTRECRUITERS_COMPANIES = ["armis", "abbvie", "servicenow"]
 WORKDAY_SITES = [        # (company name, careers site URL)
     ("NVIDIA", "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"),
     ("Intel", "https://intel.wd1.myworkdayjobs.com/External"),
     ("Salesforce", "https://salesforce.wd12.myworkdayjobs.com/External_Career_Site"),
     ("Applied Materials", "https://amat.wd1.myworkdayjobs.com/External"),
     ("Mastercard", "https://mastercard.wd1.myworkdayjobs.com/CorporateCareers"),
+    ("Medtronic", "https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers"),
+    ("Motorola Solutions", "https://motorolasolutions.wd5.myworkdayjobs.com/Careers"),
+    ("HP", "https://hp.wd5.myworkdayjobs.com/ExternalCareerSite"),
+    ("Marvell", "https://marvell.wd1.myworkdayjobs.com/MarvellCareers"),
+    ("KLA", "https://kla.wd1.myworkdayjobs.com/Search"),
+    ("Abbott", "https://abbott.wd5.myworkdayjobs.com/abbottcareers"),
+    ("Thermo Fisher", "https://thermofisher.wd5.myworkdayjobs.com/ThermoFisherCareers"),
+    ("PayPal", "https://paypal.wd1.myworkdayjobs.com/jobs"),
+    # Candidates after PayPal in the discovery list. If one of them isn't valid,
+    # the run just prints an [error] line for it and continues.
+    ("Moody's", "https://moodys.wd5.myworkdayjobs.com/External"),
+    ("Cadence", "https://cadence.wd1.myworkdayjobs.com/External_Careers"),
+    ("Synopsys", "https://synopsys.wd1.myworkdayjobs.com/Careers"),
+    ("Samsung", "https://sec.wd3.myworkdayjobs.com/Samsung_Careers"),
+    ("Western Digital", "https://wdc.wd1.myworkdayjobs.com/WD_External_Career_Site"),
+    ("Cisco", "https://cisco.wd5.myworkdayjobs.com/Cisco_Careers"),
+    ("Booking.com", "https://bookinggroup.wd5.myworkdayjobs.com/BookingGroup"),
+    ("Red Hat", "https://redhat.wd5.myworkdayjobs.com/Jobs"),
+    ("Zoom", "https://zoom.wd5.myworkdayjobs.com/Zoom"),
+    ("Autodesk", "https://autodesk.wd1.myworkdayjobs.com/Ext"),
+    ("Akamai", "https://akamai.wd1.myworkdayjobs.com/akamaicareers"),
 ]
 INCLUDE_AMAZON = True
 
@@ -30,7 +54,10 @@ INCLUDE_AMAZON = True
 COMPANY_NAMES = {"tripactions": "Navan", "wizinc": "Wiz", "catonetworks": "Cato Networks",
                  "transmitsecurity": "Transmit Security", "appsflyer": "AppsFlyer",
                  "jfrog": "JFrog", "bigid": "BigID", "walkme": "WalkMe",
-                 "nice": "NICE", "similarweb": "Similarweb"}
+                 "nice": "NICE", "similarweb": "Similarweb", "gongio": "Gong",
+                 "orcasecurity": "Orca Security", "honeybook": "HoneyBook",
+                 "moonactive": "Moon Active", "melio-payments": "Melio",
+                 "abbvie": "AbbVie", "servicenow": "ServiceNow"}
 
 # ---- Filters -------------------------------------------------------------
 TITLE_KEYWORDS = ["analyst", "analytics", "data", "bi ", "business",
@@ -109,6 +136,50 @@ def fetch_lever(company):
     } for j in r.json()]
 
 
+def fetch_ashby(board):
+    """Ashby public job board API (used by many startups)."""
+    r = requests.get(f"https://api.ashbyhq.com/posting-api/job-board/{board}", timeout=30)
+    r.raise_for_status()
+    jobs = []
+    for j in r.json().get("jobs", []):
+        if j.get("isListed") is False:
+            continue
+        places = [j.get("location") or ""] + [
+            (s.get("location") or "") for s in (j.get("secondaryLocations") or [])]
+        jobs.append({
+            "company": COMPANY_NAMES.get(board, board.capitalize()),
+            "title": j.get("title", ""),
+            "location": ", ".join(p for p in places if p),
+            "url": j.get("jobUrl", ""),
+            "description": j.get("descriptionPlain", ""),
+        })
+    return jobs
+
+
+def fetch_smartrecruiters(company, max_jobs=500):
+    """SmartRecruiters public postings API, Israel only."""
+    jobs, offset = [], 0
+    while offset < max_jobs:
+        r = requests.get(f"https://api.smartrecruiters.com/v1/companies/{company}/postings",
+                         params={"country": "il", "limit": 100, "offset": offset}, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        batch = data.get("content", [])
+        for j in batch:
+            loc = j.get("location") or {}
+            jobs.append({
+                "company": COMPANY_NAMES.get(company, (j.get("company") or {}).get("name", company)),
+                "title": j.get("name", ""),
+                "location": f"Israel, {loc.get('city', '')}",
+                "url": f"https://jobs.smartrecruiters.com/{company}/{j.get('id', '')}",
+                "description": "",
+            })
+        offset += 100
+        if offset >= data.get("totalFound", 0) or not batch:
+            break
+    return jobs
+
+
 def fetch_amazon(max_jobs=500):
     """amazon.jobs has a public JSON search (unofficial)."""
     jobs, offset = [], 0
@@ -154,6 +225,9 @@ def collect_all():
         sources.append(("amazon", fetch_amazon))
     sources += [(f"greenhouse:{b}", lambda b=b: fetch_greenhouse(b)) for b in GREENHOUSE_BOARDS]
     sources += [(f"lever:{c}", lambda c=c: fetch_lever(c)) for c in LEVER_COMPANIES]
+    sources += [(f"ashby:{b}", lambda b=b: fetch_ashby(b)) for b in ASHBY_BOARDS]
+    sources += [(f"smartrecruiters:{c}", lambda c=c: fetch_smartrecruiters(c))
+                for c in SMARTRECRUITERS_COMPANIES]
 
     all_jobs = []
     for name, fetch in sources:
