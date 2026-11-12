@@ -2,42 +2,63 @@ name: Job Agent
 
 on:
   schedule:
-    # GitHub cron uses UTC. Target: 09:23, 13:23, 17:23 Israel time.
-    - cron: "23 7,11,15 * * *"   # winter (Israel = UTC+2)
-    - cron: "23 6,10,14 * * *"   # summer (Israel = UTC+3)
+    # Several tries a day (GitHub sometimes starts late or skips scheduled runs).
+    # Only the first run that actually starts each day runs the agent and sends the email.
+    - cron: "17 5,9,13,17 * * *"
   workflow_dispatch:   # "Run workflow" button for manual runs
+
+permissions:
+  actions: read
+  contents: read
 
 jobs:
   run-agent:
     runs-on: ubuntu-latest
     steps:
-      - name: Season check (works even if GitHub starts late)
-        id: time
+      - name: Once-a-day check
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          OFFSET=$(TZ=Asia/Jerusalem date +%z)
-          echo "Israel time now: $(TZ=Asia/Jerusalem date '+%H:%M') (UTC$OFFSET)"
-          echo "Triggered by: ${{ github.event.schedule }}"
-          GO=false
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then GO=true; fi
-          if [ "${{ github.event.schedule }}" = "23 7,11,15 * * *" ] && [ "$OFFSET" = "+0200" ]; then GO=true; fi
-          if [ "${{ github.event.schedule }}" = "23 6,10,14 * * *" ] && [ "$OFFSET" = "+0300" ]; then GO=true; fi
-          echo "go=$GO"
-          echo "go=$GO" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run - always runs"
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          TODAY=$(TZ=Asia/Jerusalem date +%F)
+          RUNS=$(gh api "repos/${{ github.repository }}/actions/workflows/job-agent.yml/runs?status=success&per_page=20" \
+                 --jq ".workflow_runs[] | select(.id != ${{ github.run_id }}) | \"\(.id) \(.created_at)\"")
+          DONE=false
+          while read -r ID CREATED; do
+            [ -z "$ID" ] && continue
+            if [ "$(TZ=Asia/Jerusalem date -d "$CREATED" +%F)" = "$TODAY" ]; then
+              RAN=$(gh api "repos/${{ github.repository }}/actions/runs/$ID/jobs" \
+                    --jq '[.jobs[].steps[] | select(.name == "Run the agent" and .conclusion == "success")] | length')
+              if [ "$RAN" -gt 0 ]; then DONE=true; fi
+            fi
+          done <<< "$RUNS"
+          if [ "$DONE" = true ]; then
+            echo "The agent already ran today ($TODAY) - skipping"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "First run today ($TODAY) - running the agent"
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/checkout@v4
-        if: steps.time.outputs.go == 'true'
+        if: steps.check.outputs.go == 'true'
 
       - uses: actions/setup-python@v5
-        if: steps.time.outputs.go == 'true'
+        if: steps.check.outputs.go == 'true'
         with:
           python-version: "3.12"
 
       - name: Install packages
-        if: steps.time.outputs.go == 'true'
+        if: steps.check.outputs.go == 'true'
         run: pip install -r requirements.txt
 
       - name: Create secret files
-        if: steps.time.outputs.go == 'true'
+        if: steps.check.outputs.go == 'true'
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
           PROFILE: ${{ secrets.PROFILE }}
@@ -46,7 +67,7 @@ jobs:
           printf '%s' "$PROFILE" > profile.txt
 
       - name: Run the agent
-        if: steps.time.outputs.go == 'true'
+        if: steps.check.outputs.go == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
