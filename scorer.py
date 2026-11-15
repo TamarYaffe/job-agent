@@ -92,7 +92,7 @@ def call_gemini(prompt):
                                  "temperature": 0.2}}
     for attempt in range(3):
         try:
-            r = requests.post(url, headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
+            r = requests.post(url, headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"].strip()},
                               json=body, timeout=180)
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
             print(f"  Gemini didn't answer in time, retrying ({attempt + 1}/3)...")

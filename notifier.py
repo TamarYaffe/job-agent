@@ -84,8 +84,8 @@ def _table(jobs, favorite_section=False):
 
 def send_digest(jobs):
     load_env()
-    sender = os.environ.get("EMAIL_ADDRESS")
-    password = os.environ.get("EMAIL_APP_PASSWORD")
+    sender = (os.environ.get("EMAIL_ADDRESS") or "").strip()
+    password = (os.environ.get("EMAIL_APP_PASSWORD") or "").strip()
     to = os.environ.get("EMAIL_TO") or sender
     if not sender or not password:
         print("Email skipped: add EMAIL_ADDRESS and EMAIL_APP_PASSWORD to .env")

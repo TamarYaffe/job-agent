@@ -39,19 +39,12 @@ WORKDAY_SITES = [        # (company name, careers site URL)
     ("Abbott", "https://abbott.wd5.myworkdayjobs.com/abbottcareers"),
     ("Thermo Fisher", "https://thermofisher.wd5.myworkdayjobs.com/ThermoFisherCareers"),
     ("PayPal", "https://paypal.wd1.myworkdayjobs.com/jobs"),
-    # Candidates after PayPal in the discovery list. If one of them isn't valid,
-    # the run just prints an [error] line for it and continues.
-    ("Moody's", "https://moodys.wd5.myworkdayjobs.com/External"),
     ("Cadence", "https://cadence.wd1.myworkdayjobs.com/External_Careers"),
-    ("Synopsys", "https://synopsys.wd1.myworkdayjobs.com/Careers"),
     ("Samsung", "https://sec.wd3.myworkdayjobs.com/Samsung_Careers"),
-    ("Western Digital", "https://wdc.wd1.myworkdayjobs.com/WD_External_Career_Site"),
     ("Cisco", "https://cisco.wd5.myworkdayjobs.com/Cisco_Careers"),
-    ("Booking.com", "https://bookinggroup.wd5.myworkdayjobs.com/BookingGroup"),
     ("Red Hat", "https://redhat.wd5.myworkdayjobs.com/Jobs"),
     ("Zoom", "https://zoom.wd5.myworkdayjobs.com/Zoom"),
     ("Autodesk", "https://autodesk.wd1.myworkdayjobs.com/Ext"),
-    ("Akamai", "https://akamai.wd1.myworkdayjobs.com/akamaicareers"),
 ]
 INCLUDE_AMAZON = True
 
@@ -275,6 +268,8 @@ def fetch_comeet(company, page_url):
                      "title": m.group(2).replace("-", " ").title(),
                      "location": "Locations unknown",   # the AI step reads the real location
                      "url": url, "description": ""})
+    if not jobs and "comeet" in text.lower():
+        return []   # a Comeet page with no job links: nothing open right now
     if not jobs:
         raise RuntimeError("no jobs found on the careers page (it may load them with JavaScript)")
     return jobs
