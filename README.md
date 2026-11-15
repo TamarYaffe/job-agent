@@ -6,7 +6,7 @@ An automated agent that finds relevant junior roles in Israel, scores each one a
 
 1. **Collects** open positions from 24 company career sites (NVIDIA, Intel, Salesforce, Applied Materials, Amazon, Wiz, Payoneer, JFrog, Taboola, Riskified and more) through their public job APIs.
 2. **Filters** them with cheap rules first: location in central Israel, relevant title keywords, and exclusion lists for senior or off-field roles.
-3. **Stores** new jobs in Google Sheets, de-duplicated by URL, so every job is processed only once.
+3. **Stores** new jobs in Google Sheets, de-duplicated by URL, so every job is processed only once. Jobs that disappear from a company's site are marked **closed** (the row turns red), and a status dropdown tracks each application (applied, interview, offer...).
 4. **Scores** each new job 1–10 with Google Gemini, comparing the full job description to my candidate profile, and writes a one-line reason.
 5. **Emails** a digest after every run, sorted by score with strong matches highlighted, or a short "no new jobs" note.
 6. **Runs automatically** at 09:00, 13:00 and 17:00 Israel time with GitHub Actions.

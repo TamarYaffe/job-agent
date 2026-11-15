@@ -416,14 +416,24 @@ def collect_all():
     sources += [(f"auto:{n}", lambda n=n, s=s: fetch_auto(n, s)) for n, s in AUTO_DETECT]
 
     all_jobs = []
+    FETCHED_BY_COMPANY.clear()
     for name, fetch in sources:
         try:
             jobs = fetch()
             print(f"[ok]    {name}: {len(jobs)} jobs")
             all_jobs += jobs
+            # Remember every open job of companies whose source answered properly,
+            # so jobs that disappeared can be marked "closed" in the sheet.
+            # (A source that returns 0 jobs is skipped, in case it's a glitch.)
+            for j in jobs:
+                FETCHED_BY_COMPANY.setdefault(j["company"], set()).add(j["url"])
         except Exception as e:  # one broken source shouldn't stop the rest
             print(f"[error] {name}: {e}")
     return all_jobs
+
+
+# company -> set of job URLs currently open (filled by collect_all)
+FETCHED_BY_COMPANY = {}
 
 
 if __name__ == "__main__":
@@ -447,6 +457,10 @@ if __name__ == "__main__":
     new_jobs = save_new_jobs(relevant)
     print(f"Google Sheets: {len(new_jobs)} new jobs added "
           f"({len(relevant) - len(new_jobs)} were already there)")
+
+    from sheets import update_closed_jobs
+    closed, reopened = update_closed_jobs(FETCHED_BY_COMPANY)
+    print(f"Google Sheets: {closed} jobs marked closed, {reopened} reopened")
 
     from scorer import score_pending
     score_pending()
