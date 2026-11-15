@@ -62,6 +62,7 @@ COMEET_PAGES = [
     ("CytoReason", "https://www.comeet.com/jobs/cytoreason/16.002"),
     ("Navina", "https://www.navina.ai/careers"),
     ("Scopio Labs", "https://scopiolabs.com/careers/"),
+    ("Voyantis", "https://www.comeet.com/jobs/voyantis/86.00B"),
 ]
 # Not connected yet (their careers pages load jobs only inside a browser):
 # Nucleai, TytoCare, Theator - follow them with LinkedIn job alerts instead.
