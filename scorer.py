@@ -119,10 +119,13 @@ def build_prompt(profile, batch):
 
 
 def score_pending(profile_path="profile.txt"):
+    """Score every unscored row. Returns the URLs that got a score in this run
+    (new jobs, plus older ones whose scoring failed in an earlier run)."""
+    scored_urls = set()
     load_env()
     if not os.environ.get("GEMINI_API_KEY"):
         print("AI scoring skipped: no GEMINI_API_KEY in .env")
-        return
+        return scored_urls
     with open(profile_path, encoding="utf-8") as f:
         profile = f.read()
 
@@ -145,11 +148,13 @@ def score_pending(profile_path="profile.txt"):
             r = by_id.get(i)
             if r:
                 updates.append((job["row"], int(r["score"]), r.get("reason", "")))
+                scored_urls.add(job["url"])
                 print(f"  {int(r['score']):>2}/10  {job['title']}")
         write_scores(ws, updates)   # save after every batch
 
         if start + BATCH_SIZE < len(pending):
             time.sleep(PAUSE_SECONDS)
+    return scored_urls
 
 
 if __name__ == "__main__":

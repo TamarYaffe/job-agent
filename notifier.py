@@ -74,7 +74,9 @@ def _table(jobs, favorite_section=False):
             f'<td style="padding:6px">{star}<a href="{escape(j["url"])}">{escape(j["title"])}</a></td>'
             f'<td style="padding:6px">{escape(j["company"])}</td>'
             f'<td style="padding:6px">{escape(j["location"])}</td>'
-            f'<td style="padding:6px;font-weight:normal">{escape(j["reason"])}</td></tr>')
+            f'<td style="padding:6px;font-weight:normal">'
+            f'{escape(j["reason"]) or "<i>AI scoring failed this time - it will be scored in the next run and sent again</i>"}'
+            f'</td></tr>')
     return ('<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">'
             '<tr style="background:#333;color:#fff"><th style="padding:6px">Score</th>'
             '<th style="padding:6px">Job</th><th style="padding:6px">Company</th>'

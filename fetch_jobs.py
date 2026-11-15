@@ -458,9 +458,10 @@ if __name__ == "__main__":
     print(f"Google Sheets: {closed} jobs marked closed, {reopened} reopened")
 
     from scorer import score_pending
-    score_pending()
+    scored_now = score_pending()
 
-    # Stage 5: email digest of this run's new jobs (or "nothing new")
+    # Stage 5: email digest of this run's new jobs, plus older jobs that only got
+    # their score now (because AI scoring failed for them in an earlier run)
     from sheets import get_jobs_by_urls
     from notifier import send_digest
-    send_digest(get_jobs_by_urls({j["url"] for j in new_jobs}))
+    send_digest(get_jobs_by_urls({j["url"] for j in new_jobs} | scored_now))
