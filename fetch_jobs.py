@@ -462,7 +462,8 @@ if __name__ == "__main__":
     print(f"Google Sheets: {closed} jobs marked closed, {reopened} reopened")
 
     from scorer import score_pending
-    scored_now = score_pending()
+    scored_now = score_pending(known_descriptions={j['url']: j.get('description', '')
+                                                   for j in relevant})
 
     # Stage 5: email digest of this run's new jobs, plus older jobs that only got
     # their score now (because AI scoring failed for them in an earlier run)

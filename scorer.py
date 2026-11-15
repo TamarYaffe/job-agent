@@ -118,7 +118,7 @@ def build_prompt(profile, batch):
     return PROMPT.format(profile=profile, jobs=jobs_text)
 
 
-def score_pending(profile_path="profile.txt"):
+def score_pending(profile_path="profile.txt", known_descriptions=None):
     """Score every unscored row. Returns the URLs that got a score in this run
     (new jobs, plus older ones whose scoring failed in an earlier run)."""
     scored_urls = set()
@@ -135,7 +135,11 @@ def score_pending(profile_path="profile.txt"):
     for start in range(0, len(pending), BATCH_SIZE):
         batch = pending[start:start + BATCH_SIZE]
         for job in batch:
-            job["description"] = fetch_description(job["url"])
+            # Prefer the description the job board's API already gave us: career pages
+            # often load their text with JavaScript, so downloading them gives the AI
+            # almost nothing to read (that made good jobs score 1/10).
+            known = clean_html((known_descriptions or {}).get(job["url"], ""))
+            job["description"] = known[:3000] if len(known) > 200 else fetch_description(job["url"])
         try:
             results = call_gemini(build_prompt(profile, batch))
         except Exception as e:
@@ -149,7 +153,8 @@ def score_pending(profile_path="profile.txt"):
             if r:
                 updates.append((job["row"], int(r["score"]), r.get("reason", "")))
                 scored_urls.add(job["url"])
-                print(f"  {int(r['score']):>2}/10  {job['title']}")
+                print(f"  {int(r['score']):>2}/10  {job['title']} @ {job['company']}"
+                      f" - {r.get('reason', '')[:140]}")
         write_scores(ws, updates)   # save after every batch
 
         if start + BATCH_SIZE < len(pending):
