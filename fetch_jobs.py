@@ -89,7 +89,10 @@ COMPANY_NAMES = {"tripactions": "Navan", "wizinc": "Wiz", "catonetworks": "Cato 
 TITLE_KEYWORDS = ["analyst", "analytics", "data", "bi ", "business",
                   "operations", "ops", "project", "program", "product",
                   "planning", "configuration", "supply", "procurement",
-                  "implementation", "onboarding", "process", "coordinator"]
+                  "implementation", "onboarding", "process", "coordinator",
+                  # logistics / supply-chain titles (fits the Head of Logistics background)
+                  "planner", "buyer", "purchas", "logistic", "material", "sourcing",
+                  "inventory", "demand", "scheduler", "order management", "customer success"]
 # Junior-only: titles with these words are skipped before the AI step (saves quota)
 SENIOR_WORDS = ["senior", "sr.", "sr ", "staff", "principal", "director",
                 "head of", "vp", "vice president", "lead", "manager, ", "architect"]
