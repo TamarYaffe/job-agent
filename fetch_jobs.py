@@ -22,7 +22,7 @@ GREENHOUSE_BOARDS = ["riskified", "tripactions", "appsflyer", "taboola", "wizinc
                      "catonetworks", "payoneer", "jfrog", "forter", "bigid",
                      "island", "nice", "gongio", "orcasecurity", "via", "apiiro",
                      "duda", "torq", "nanit", "obligo", "alta"]
-LEVER_COMPANIES = ["walkme", "cloudinary"]
+LEVER_COMPANIES = ["walkme", "cloudinary", "biocatch"]
 ASHBY_BOARDS = ["honeybook", "moonactive", "unit", "melio-payments"]
 SMARTRECRUITERS_COMPANIES = ["armis", "abbvie", "servicenow"]
 WORKDAY_SITES = [        # (company name, careers site URL)
@@ -84,7 +84,7 @@ COMPANY_NAMES = {"tripactions": "Navan", "wizinc": "Wiz", "catonetworks": "Cato 
                  "moonactive": "Moon Active", "melio-payments": "Melio",
                  "abbvie": "AbbVie", "servicenow": "ServiceNow",
                  "aidocmedical": "Aidoc", "eleoshealth": "Eleos Health",
-                 "khealthcareers": "K Health"}
+                 "khealthcareers": "K Health", "biocatch": "BioCatch"}
 
 # ---- Filters -------------------------------------------------------------
 TITLE_KEYWORDS = ["analyst", "analytics", "data", "bi ", "business",
