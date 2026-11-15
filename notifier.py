@@ -36,31 +36,50 @@ def build_email(jobs, now):
 
     jobs = sorted(jobs, key=_score, reverse=True)
     good = [j for j in jobs if _score(j) >= GOOD_SCORE]
+    favorites = [j for j in jobs if j.get("favorite")]
+
     subject = f"Job Agent {now} - {len(jobs)} new jobs, {len(good)} worth a look"
+    if favorites:
+        subject = f"⭐ {len(favorites)} from your favorite companies | " + subject
     if good:
         best = good[0]
         subject += f" (top: {best['score']}/10 {best['title']} @ {best['company']})"
 
+    body = ""
+    if favorites:
+        body += ('<h2 style="font-family:Arial,sans-serif;color:#b8860b">'
+                 '⭐ New jobs at your favorite biotech / medtech companies</h2>'
+                 + _table(favorites, favorite_section=True))
+    body += (f"<p style=\"font-family:Arial,sans-serif\"><b>{len(jobs)}</b> new jobs, "
+             f"<b>{len(good)}</b> scored {GOOD_SCORE}+ out of 10.</p>"
+             + _table(jobs) +
+             f'<p><a href="{sheet_url}">Open the full jobs sheet</a></p>')
+    return subject, body
+
+
+def _table(jobs, favorite_section=False):
     rows = []
     for j in jobs:
         s = _score(j)
-        style = "background:#e8f5e9;font-weight:bold;" if s >= GOOD_SCORE else "color:#777;"
+        if favorite_section:
+            style = "background:#fff4cc;font-weight:bold;"
+        elif j.get("favorite"):
+            style = "background:#fff4cc;font-weight:bold;" if s >= GOOD_SCORE else "background:#fffaf0;"
+        else:
+            style = "background:#e8f5e9;font-weight:bold;" if s >= GOOD_SCORE else "color:#777;"
+        star = "⭐ " if j.get("favorite") else ""
         rows.append(
             f'<tr style="{style}">'
             f'<td style="padding:6px;text-align:center">{s if s >= 0 else "?"}/10</td>'
-            f'<td style="padding:6px"><a href="{escape(j["url"])}">{escape(j["title"])}</a></td>'
+            f'<td style="padding:6px">{star}<a href="{escape(j["url"])}">{escape(j["title"])}</a></td>'
             f'<td style="padding:6px">{escape(j["company"])}</td>'
             f'<td style="padding:6px">{escape(j["location"])}</td>'
             f'<td style="padding:6px;font-weight:normal">{escape(j["reason"])}</td></tr>')
-    body = (f"<p><b>{len(jobs)}</b> new jobs, <b>{len(good)}</b> scored "
-            f"{GOOD_SCORE}+ out of 10.</p>"
-            '<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">'
+    return ('<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">'
             '<tr style="background:#333;color:#fff"><th style="padding:6px">Score</th>'
             '<th style="padding:6px">Job</th><th style="padding:6px">Company</th>'
             '<th style="padding:6px">Location</th><th style="padding:6px">Why</th></tr>'
-            + "".join(rows) +
-            f'</table><p><a href="{sheet_url}">Open the full jobs sheet</a></p>')
-    return subject, body
+            + "".join(rows) + "</table>")
 
 
 def send_digest(jobs):

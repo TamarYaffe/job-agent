@@ -12,7 +12,7 @@ SHEET_ID = os.environ.get("SHEET_ID", "1hiC8Ao8HjyXIVdFXZ-4yKj6OEq5o8JcINDSTQ2Gg
 CREDENTIALS_FILE = "credentials.json"   # never upload this file to GitHub!
 
 HEADERS = ["date_found", "company", "title", "location", "url",
-           "score", "reason", "status"]
+           "score", "reason", "status", "favorite"]
 
 
 def get_worksheet():
@@ -33,7 +33,7 @@ def save_new_jobs(jobs):
     new_jobs = [j for j in jobs if j["url"] not in existing_urls]
     today = date.today().isoformat()
     rows = [[today, j["company"], j["title"], j["location"], j["url"],
-             "", "", "new"] for j in new_jobs]
+             "", "", "new", j.get("favorite", "")] for j in new_jobs]
     if rows:
         ws.append_rows(rows, value_input_option="USER_ENTERED")
     return new_jobs
