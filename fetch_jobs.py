@@ -21,10 +21,13 @@ GREENHOUSE_BOARDS = ["riskified", "tripactions", "appsflyer", "taboola", "wizinc
                      "axonius", "yotpo", "similarweb", "transmitsecurity",
                      "catonetworks", "payoneer", "jfrog", "forter", "bigid",
                      "island", "nice", "gongio", "orcasecurity", "via", "apiiro",
-                     "duda", "torq", "nanit", "obligo", "alta"]
+                     "duda", "torq", "nanit", "obligo", "alta",
+                     # added Nov 2026 (found by discover_round3.py)
+                     "nebius", "connecteam", "tipaltisolutions", "mixtiles", "mongodb",
+                     "datadog", "cymulate", "lightrun"]
 LEVER_COMPANIES = ["walkme", "cloudinary", "biocatch"]
-ASHBY_BOARDS = ["honeybook", "moonactive", "unit", "melio-payments"]
-SMARTRECRUITERS_COMPANIES = ["armis", "abbvie", "servicenow"]
+ASHBY_BOARDS = ["honeybook", "moonactive", "unit", "melio-payments", "nexxen", "redis"]
+SMARTRECRUITERS_COMPANIES = ["armis", "abbvie", "servicenow", "wix2"]
 WORKDAY_SITES = [        # (company name, careers site URL)
     ("NVIDIA", "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"),
     ("Intel", "https://intel.wd1.myworkdayjobs.com/External"),
@@ -45,6 +48,8 @@ WORKDAY_SITES = [        # (company name, careers site URL)
     ("Red Hat", "https://redhat.wd5.myworkdayjobs.com/Jobs"),
     ("Zoom", "https://zoom.wd5.myworkdayjobs.com/Zoom"),
     ("Autodesk", "https://autodesk.wd1.myworkdayjobs.com/Ext"),
+    ("Johnson & Johnson", "https://jj.wd5.myworkdayjobs.com/JJ"),
+    ("CrowdStrike", "https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers"),
 ]
 INCLUDE_AMAZON = True
 
@@ -63,6 +68,8 @@ COMEET_PAGES = [
     ("Navina", "https://www.navina.ai/careers"),
     ("Scopio Labs", "https://scopiolabs.com/careers/"),
     ("Voyantis", "https://www.comeet.com/jobs/voyantis/86.00B"),
+    ("Global-e", "https://www.global-e.com/careers/"),
+    ("Riverside", "https://careers.riverside.fm/careers"),
 ]
 # Not connected yet (their careers pages load jobs only inside a browser):
 # Nucleai, TytoCare, Theator - follow them with LinkedIn job alerts instead.
@@ -84,7 +91,8 @@ COMPANY_NAMES = {"tripactions": "Navan", "wizinc": "Wiz", "catonetworks": "Cato 
                  "moonactive": "Moon Active", "melio-payments": "Melio",
                  "abbvie": "AbbVie", "servicenow": "ServiceNow",
                  "aidocmedical": "Aidoc", "eleoshealth": "Eleos Health",
-                 "khealthcareers": "K Health", "biocatch": "BioCatch"}
+                 "khealthcareers": "K Health", "biocatch": "BioCatch",
+                 "wix2": "Wix", "tipaltisolutions": "Tipalti", "mongodb": "MongoDB"}
 
 # ---- Filters -------------------------------------------------------------
 TITLE_KEYWORDS = ["analyst", "analytics", "data", "bi ", "business",
@@ -100,7 +108,8 @@ SENIOR_WORDS = ["senior", "sr.", "sr ", "staff", "principal", "director",
 # Wrong field: matched a keyword ("product", "data"...) but never fits the profile
 EXCLUDE_WORDS = ["designer", "devops", "developer", "software engineer",
                  "data engineer", "ml engineer", "mlops", "ml ops", "firmware",
-                 "counsel", "platform engineer", "security engineer", "pentest"]
+                 "counsel", "platform engineer", "security engineer", "pentest",
+                 "technician"]
 LOCATIONS = ["israel", "tel aviv", "tel-aviv","ramat gan", "givatayim", "herzliya",
              "petah tikva", "petach tikva", "ra'anana", "raanana", "kfar saba",
              "hod hasharon", "rosh haayin", "rosh ha'ayin", "airport city",
