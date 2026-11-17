@@ -465,6 +465,13 @@ if __name__ == "__main__":
     scored_now = score_pending(known_descriptions={j['url']: j.get('description', '')
                                                    for j in relevant})
 
+    # Stage 6: dashboard tab + daily history (never let it stop the email)
+    try:
+        from dashboard import update_dashboard
+        update_dashboard(scanned=len(jobs), new_today=len(new_jobs))
+    except Exception as e:
+        print(f"(dashboard skipped: {e})")
+
     # Stage 5: email digest of this run's new jobs, plus older jobs that only got
     # their score now (because AI scoring failed for them in an earlier run)
     from sheets import get_jobs_by_urls
