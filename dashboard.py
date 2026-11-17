@@ -151,68 +151,160 @@ def _grid(sheet_id, r0, r1, c0, c1):
             "startColumnIndex": c0, "endColumnIndex": c1}
 
 
-def _chart(title, chart_type, domain, series, value_axis, anchor_sheet, anchor_row, legend):
+def _rgb(hex_color):
+    h = hex_color.lstrip("#")
+    return {"red": int(h[0:2], 16) / 255, "green": int(h[2:4], 16) / 255,
+            "blue": int(h[4:6], 16) / 255}
+
+
+# Same palette as the presentation
+PINE, GREEN, LIME, PAPER, SAND, MUTED = "#12322B", "#2E6B57", "#C6F05A", "#F2EDE3", "#E6DFD0", "#6B7A72"
+SERIES_COLORS = [PINE, GREEN, "#8DB33A", "#C9772E", "#9AA7A0"]   # one per role family
+
+
+def _cells(sheet_id, r0, r1, c0, c1, bg=None, color=PINE, bold=False, size=10,
+           align=None, fmt=None):
+    f = {"textFormat": {"foregroundColor": _rgb(color), "bold": bold, "fontSize": size},
+         "verticalAlignment": "MIDDLE"}
+    if bg:
+        f["backgroundColor"] = _rgb(bg)
+    if align:
+        f["horizontalAlignment"] = align
+    if fmt:
+        f["numberFormat"] = {"type": "NUMBER", "pattern": fmt}
+    return {"repeatCell": {"range": _grid(sheet_id, r0, r1, c0, c1), "cell": {"userEnteredFormat": f},
+                           "fields": "userEnteredFormat(backgroundColor,textFormat,"
+                                     "verticalAlignment,horizontalAlignment,numberFormat)"}}
+
+
+def _size(sheet_id, dimension, start, end, pixels):
+    return {"updateDimensionProperties": {
+        "range": {"sheetId": sheet_id, "dimension": dimension, "startIndex": start, "endIndex": end},
+        "properties": {"pixelSize": pixels}, "fields": "pixelSize"}}
+
+
+def _line_under(sheet_id, r0, r1):
+    rule = {"style": "SOLID", "width": 1, "colorStyle": {"rgbColor": _rgb(SAND)}}
+    return {"updateBorders": {"range": _grid(sheet_id, r0, r1, 0, 3),
+                              "bottom": rule, "innerHorizontal": rule}}
+
+
+def _chart(title, chart_type, domain, series, value_axis, anchor_sheet, anchor_row,
+           colors, legend=False, labels=False):
     return {"addChart": {"chart": {
-        "spec": {"title": title, "basicChart": {
-            "chartType": chart_type,
-            "legendPosition": "BOTTOM_LEGEND" if legend else "NO_LEGEND",
-            "headerCount": 1,
-            "domains": [{"domain": {"sourceRange": {"sources": [domain]}}}],
-            "series": [{"series": {"sourceRange": {"sources": [s]}}, "targetAxis": value_axis}
-                       for s in series]}},
+        "spec": {"title": title, "fontName": "Roboto",
+                 "titleTextFormat": {"foregroundColorStyle": {"rgbColor": _rgb(PINE)},
+                                     "bold": True, "fontSize": 14},
+                 "backgroundColorStyle": {"rgbColor": _rgb(PAPER)},
+                 "basicChart": {
+                     "chartType": chart_type,
+                     "legendPosition": "BOTTOM_LEGEND" if legend else "NO_LEGEND",
+                     "headerCount": 1,
+                     "domains": [{"domain": {"sourceRange": {"sources": [domain]}}}],
+                     "series": [dict({"series": {"sourceRange": {"sources": [s]}},
+                                      "targetAxis": value_axis,
+                                      "colorStyle": {"rgbColor": _rgb(c)}},
+                                     **({"lineStyle": {"width": 3}} if chart_type == "LINE" else {}),
+                                     **({"dataLabel": {"type": "DATA"}} if labels else {}))
+                                for s, c in zip(series, colors)]}},
         "position": {"overlayPosition": {
             "anchorCell": {"sheetId": anchor_sheet, "rowIndex": anchor_row, "columnIndex": 4},
-            "widthPixels": 640, "heightPixels": 340}}}}}
+            "offsetXPixels": 16, "widthPixels": 660, "heightPixels": 340}}}}}
 
 
-def _format_once(sh, dash, hist):
-    """Bold headers, column widths and the 3 charts - only what's missing."""
-    meta = sh.fetch_sheet_metadata(
-        {"fields": "sheets(properties(sheetId),charts(spec(title)))"})
-    titles = {c.get("spec", {}).get("title") for s in meta.get("sheets", [])
-              for c in s.get("charts", [])}
+def _style(sh, dash, hist, t):
+    """Colors, sizes and the 3 charts. Runs every time, so the look always matches
+    the current numbers (charts are rebuilt rather than patched)."""
     d, h = dash.id, hist.id
-    bold = lambda r, size=10: {"repeatCell": {
-        "range": _grid(d, r, r + 1, 0, 3),
-        "cell": {"userEnteredFormat": {"textFormat": {"bold": True, "fontSize": size}}},
-        "fields": "userEnteredFormat.textFormat"}}
-    requests = [bold(0, 16), bold(3, 12), bold(STATUS_ROW - 2, 12), bold(STATUS_ROW - 1),
-                bold(ROLE_ROW - 2, 12), bold(ROLE_ROW - 1),
-                bold(COMPANY_ROW - 2, 12), bold(COMPANY_ROW - 1),
-                {"updateDimensionProperties": {
-                    "range": {"sheetId": d, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1},
-                    "properties": {"pixelSize": 240}, "fields": "pixelSize"}}]
-    first_family = HISTORY_HEADERS.index(FAMILIES[0])
-    if CHART_TREND not in titles:
-        requests.append(_chart(
-            CHART_TREND, "LINE", _grid(h, 0, 1000, 0, 1),
-            [_grid(h, 0, 1000, c, c + 1) for c in range(first_family, len(HISTORY_HEADERS))],
-            "LEFT_AXIS", d, 0, legend=True))
-    if CHART_COMPANY not in titles:
-        r0 = COMPANY_ROW - 1
-        requests.append(_chart(
-            CHART_COMPANY, "BAR", _grid(d, r0, r0 + 1 + MAX_COMPANIES, 0, 1),
-            [_grid(d, r0, r0 + 1 + MAX_COMPANIES, 1, 2)], "BOTTOM_AXIS", d, 18, legend=False))
-    if CHART_STATUS not in titles:
-        r0 = STATUS_ROW - 1
-        requests.append(_chart(
-            CHART_STATUS, "COLUMN", _grid(d, r0, r0 + 1 + len(STATUS_OPTIONS), 0, 1),
-            [_grid(d, r0, r0 + 1 + len(STATUS_OPTIONS), 1, 2)], "LEFT_AXIS", d, 36,
-            legend=False))
-    sh.batch_update({"requests": requests})
+    reqs = [
+        {"updateSheetProperties": {"properties": {
+            "sheetId": d, "gridProperties": {"hideGridlines": True},
+            "tabColorStyle": {"rgbColor": _rgb(LIME)}},
+            "fields": "gridProperties.hideGridlines,tabColorStyle"}},
+        {"updateBorders": {"range": _grid(d, 0, 100, 0, 3), "top": {"style": "NONE"},
+                           "bottom": {"style": "NONE"}, "innerHorizontal": {"style": "NONE"}}},
+        _cells(d, 0, 100, 0, 16, bg=PAPER),                          # page background
+        _size(d, "COLUMNS", 0, 1, 280), _size(d, "COLUMNS", 1, 3, 110),
+        _size(d, "COLUMNS", 3, 4, 24),
+        _size(d, "ROWS", 0, 100, 26),
+        # Title
+        _cells(d, 0, 1, 0, 3, bg=PINE, color=PAPER, bold=True, size=20),
+        _cells(d, 1, 2, 0, 3, bg=PINE, color=LIME, size=10),
+        _size(d, "ROWS", 0, 1, 52), _size(d, "ROWS", 1, 2, 28),
+        # "Today" numbers
+        _cells(d, 3, 4, 0, 3, bg=PINE, color=PAPER, bold=True, size=11),
+        _cells(d, 4, 10, 0, 1, bg=SAND, color=PINE, size=11),
+        _cells(d, 4, 10, 1, 3, bg=SAND, color=PINE, bold=True, size=16, align="LEFT"),
+        _cells(d, 8, 9, 1, 2, bg=SAND, color=PINE, bold=True, size=16, align="LEFT", fmt="0.0"),
+        _cells(d, 7, 8, 1, 2, bg=LIME, color=PINE, bold=True, size=16, align="LEFT"),
+        _size(d, "ROWS", 4, 10, 34),
+        _line_under(d, 4, 10),
+    ]
+    for label_row in (STATUS_ROW - 2, ROLE_ROW - 2, COMPANY_ROW - 2):   # section bars
+        reqs += [_cells(d, label_row, label_row + 1, 0, 3, bg=PINE, color=PAPER, bold=True, size=11),
+                 _size(d, "ROWS", label_row, label_row + 1, 32)]
+    for head_row, n in ((STATUS_ROW - 1, len(STATUS_OPTIONS)), (ROLE_ROW - 1, len(FAMILIES)),
+                        (COMPANY_ROW - 1, MAX_COMPANIES)):              # tables
+        reqs += [_cells(d, head_row, head_row + 1, 0, 3, bg=SAND, color=MUTED, bold=True, size=9),
+                 _cells(d, head_row + 1, head_row + 1 + n, 1, 3, align="CENTER"),
+                 _line_under(d, head_row + 1, head_row + 1 + n)]
+    for i, (_, _, best) in enumerate(t["by_company"]):                 # strong matches
+        if best != "" and best >= 8:
+            r = COMPANY_ROW + i
+            reqs.append(_cells(d, r, r + 1, 2, 3, bg=LIME, bold=True, align="CENTER"))
+
+    # Charts: remove ours and draw them again with the current style
+    meta = sh.fetch_sheet_metadata({"fields": "sheets(properties(sheetId),charts(chartId,spec(title)))"})
+    for s in meta.get("sheets", []):
+        for c in s.get("charts", []):
+            if c.get("spec", {}).get("title") in (CHART_TREND, CHART_COMPANY, CHART_STATUS):
+                reqs.append({"deleteEmbeddedObject": {"objectId": c["chartId"]}})
+    first = HISTORY_HEADERS.index(FAMILIES[0])
+    reqs.append(_chart(CHART_TREND, "LINE", _grid(h, 0, 1000, 0, 1),
+                       [_grid(h, 0, 1000, c, c + 1) for c in range(first, len(HISTORY_HEADERS))],
+                       "LEFT_AXIS", d, 0, SERIES_COLORS, legend=True))
+    r0 = COMPANY_ROW - 1
+    reqs.append(_chart(CHART_COMPANY, "BAR", _grid(d, r0, r0 + 1 + MAX_COMPANIES, 0, 1),
+                       [_grid(d, r0, r0 + 1 + MAX_COMPANIES, 1, 2)], "BOTTOM_AXIS", d, 19,
+                       [GREEN], labels=True))
+    r0 = STATUS_ROW - 1
+    reqs.append(_chart(CHART_STATUS, "COLUMN", _grid(d, r0, r0 + 1 + len(STATUS_OPTIONS), 0, 1),
+                       [_grid(d, r0, r0 + 1 + len(STATUS_OPTIONS), 1, 2)], "LEFT_AXIS", d, 38,
+                       [PINE], labels=True))
+    sh.batch_update({"requests": reqs})
 
 
-def update_dashboard(scanned, new_today):
+def _today_history(sh, today):
+    """Jobs scanned today, as saved by today's run (for a dashboard-only refresh)."""
+    try:
+        for row in sh.worksheet("history").get_all_values()[1:]:
+            if row and row[0] == today:
+                return int(row[1])
+    except Exception:
+        pass
+    return ""
+
+
+def update_dashboard(scanned=None, new_today=None):
     jobs_ws = get_worksheet()
     sh = jobs_ws.spreadsheet
     today = date.today().isoformat()
-    t = build_tables(_read_jobs(jobs_ws))
+    jobs = _read_jobs(jobs_ws)
+    t = build_tables(jobs)
+    if scanned is None:                       # refresh only: reuse today's numbers
+        scanned = _today_history(sh, today)
+    if new_today is None:
+        new_today = sum(1 for j in jobs if j["date_found"] == today)
     hist = _save_history(sh, today, scanned, t)
     _save_company_history(sh, today, t)
-    dash = _tab(sh, "dashboard", rows=100, cols=12)
+    dash = _tab(sh, "dashboard", rows=100, cols=16)
     _write_dashboard(dash, today, scanned, new_today, t)
     try:
-        _format_once(sh, dash, hist)
+        _style(sh, dash, hist, t)
     except Exception as e:      # looks are nice-to-have; the numbers are already saved
         print(f"(dashboard formatting skipped: {e})")
     print(f"Dashboard: {t['open']} open jobs, {t['strong']} strong matches")
+
+
+if __name__ == "__main__":      # refresh the dashboard without collecting or emailing
+    update_dashboard()
