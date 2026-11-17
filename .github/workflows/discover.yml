@@ -1,0 +1,20 @@
+name: Discover sources
+
+# Manual only: checks candidate companies and prints which ones the agent can read.
+# Read-only - no secrets, no sheet, no email.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python discover_round3.py
